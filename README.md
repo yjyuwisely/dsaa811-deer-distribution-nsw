@@ -4,7 +4,7 @@
 **Author**: Yeongjin Yu  
 **Date**: 26 May 2025  
 
-This project investigates the spatial and temporal distribution of feral deer species (family *Cervidae*) in New South Wales (NSW), using data from the **Atlas of Living Australia (ALA)**. The analysis was performed in R using tidyverse and visualisation tools to identify species frequency, geographic hotspots, and seasonal patterns.
+This project investigates the spatial and temporal distribution of feral deer species (family *Cervidae*) in New South Wales (NSW), using data from the Atlas of Living Australia (ALA). The analysis was performed in R using tidyverse and visualisation tools to identify species frequency, geographic hotspots, and seasonal patterns.
 
 ---
 
