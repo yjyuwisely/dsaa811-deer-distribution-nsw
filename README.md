@@ -1,6 +1,6 @@
 # DSAA811 – Spatiotemporal Distribution of Feral Deer in NSW
 
-**Subject**: DSAA811 – Data Analytics and Visualisation  
+**Subject**: DSAA811 – Data Analytics and Visualisation (Enhanced) 
 **Author**: Yeongjin Yu  
 **Date**: 26 May 2025  
 
