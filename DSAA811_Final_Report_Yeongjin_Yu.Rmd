@@ -1,0 +1,248 @@
+---
+title: "Spatiotemporal Distribution of Feral Deer Species Across New South Wales"
+author: "Yeongjin Yu"
+date: "26-05-2025"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+    highlight: tango
+    css: bold-headings.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, 
+                      fig.width = 10, fig.height = 6, fig.align = "center")
+```
+
+## Abstract
+
+Despite significant increases in feral deer populations across New South Wales (NSW), limited research has visualised the spatial and temporal patterns of their distribution. This report utilises data from the Atlas of Living Australia (ALA) to investigate the distribution, frequency, and growth patterns of feral deer populations in NSW. Exploratory data analysis and visualisation techniques are employed to highlight key regions experiencing population expansions. These findings aim to provide critical insights to conservation planners, policymakers, and land managers, enabling targeted and effective management strategies to mitigate the negative impacts associated with increasing deer populations.
+
+## Background
+
+Feral deer populations in New South Wales have grown rapidly over the past two decades, posing significant ecological and agricultural threats. Their impact includes overgrazing, destruction of native vegetation, competition with native species, and increased vehicle collisions. Despite numerous recorded sightings, limited analysis has been conducted to visualise the long-term spatial and temporal trends in deer distribution. By identifying where and when deer populations are expanding, this project can support more targeted and effective wildlife management strategies. The findings are relevant to conservation planners, landholders, and policymakers seeking to reduce the harmful consequences of deer overpopulation in NSW.
+
+Six species of deer have been introduced to Australia since European settlement, mainly for hunting and ornamental purposes. Notably, fallow deer (Dama dama), red deer (Cervus elaphus), and rusa deer (Cervus timorensis) are now widely established across southeastern Australia. These introductions occurred during the 19th and early 20th centuries, with initial populations either escaping or being deliberately released into the wild. Over time, these species have established self-sustaining populations, particularly in national parks, state forests, and rural landscapes.
+
+Recent data suggest that deer numbers in NSW have increased significantly due to a combination of factors including a lack of natural predators, favourable environmental conditions, and reduced population control efforts. Sightings from community monitoring platforms (such as the Atlas of Living Australia) indicate expanding geographic ranges, especially in the Great Dividing Range and coastal zones.
+
+## Research Question and Aims
+
+**Research Question**: How have the spatial and temporal distributions of feral deer species in NSW changed over time, and what patterns emerge from different species' observations?
+
+This project aims to explore deer species frequency, spatial distribution, and seasonal observation trends using observational data from the Atlas of Living Australia (ALA). The expected outcome is a set of actionable insights to support land managers, policymakers, and conservationists in designing more targeted and efficient strategies for mitigating the ecological and agricultural impacts of feral deer in NSW.
+
+## Data Description
+
+This project uses observational data sourced from the Atlas of Living Australia (ALA), accessed via the galah R package. Observations are filtered for deer (family Cervidae) in New South Wales. The dataset includes species name (`scientificName`), coordinates (`decimalLatitude`, `decimalLongitude`), observation date (`eventDate`), and method of recording (`basisOfRecord`). Cleaned variables include `observation_date`, `year`, and `month`.
+
+## Data Collection
+
+```{r data-collection}
+# Load required libraries
+library(galah)
+library(tidyverse)
+library(lubridate)
+
+# Make sure to register your email at https://www.ala.org.au/
+# before using galah_config() to access ALA datasets
+galah_config(email = "yjyuwisely@gmail.com")
+
+# Connect to the Atlas of Living Australia  
+galah_identify("ALA")  
+
+# Filter for deer species in NSW from the ALA
+nsw_deer <- galah_call() |>
+  galah_filter(
+    family == "Cervidae",
+    stateProvince == "New South Wales"
+  ) |>
+  atlas_occurrences()
+
+# Save for CSV file and local use
+write.csv(nsw_deer, "nsw_deer_data.csv", row.names = FALSE)
+```
+
+## Data Preparation
+
+```{r data-preparation}
+# Load the saved data
+nsw_deer <- read_csv("nsw_deer_data.csv")
+
+# Clean and transform
+nsw_deer_clean <- nsw_deer %>%
+  filter(!is.na(decimalLatitude), !is.na(decimalLongitude)) %>%
+  mutate(
+    observation_date = ymd(substring(eventDate, 1, 10)),
+    year = year(observation_date)
+  )
+
+# Dataset summary information
+cat("Dataset contains", nrow(nsw_deer_clean), "observations across", 
+    length(unique(nsw_deer_clean$scientificName)), "deer taxa.")
+```
+
+## Exploratory Data Analysis
+
+### Summary by Species
+
+```{r species-summary}
+species_summary <- nsw_deer_clean %>%
+  group_by(scientificName) %>%
+  summarise(
+    count = n(),
+    earliest_record = min(observation_date, na.rm = TRUE),
+    latest_record = max(observation_date, na.rm = TRUE)
+  ) %>%
+  arrange(desc(count))
+
+knitr::kable(species_summary, caption = "Summary of Deer Species Sightings")
+```
+Table 1 shows the first and most recent observation dates for each deer species in NSW. While *CERVIDAE* records date back to 1969, others like *Dama dama dama* and *Axis porcinus* only appear in recent decades. This highlights variation in species presence and recording history, complementing the frequency data in Figure 2.
+
+
+### Frequency of Deer Species Observations
+
+```{r species-frequency, fig.width=10, fig.height=7}
+species_counts <- nsw_deer_clean %>%
+  group_by(scientificName) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+ggplot(species_counts, aes(x = reorder(scientificName, count), y = count)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Frequency of Deer Species Observations in NSW",
+    x = "Species",
+    y = "Number of Observations"
+  ) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text.y = element_text(face = "italic")
+  ) +
+  geom_text(aes(label = count), hjust = -0.1, size = 3.5)
+```
+
+Figure 1 shows that *Dama dama* is the most frequently observed deer species in NSW, with over 12,000 records, followed by general *Cervus* entries. Less common species, like *Axis porcinus*, appear fewer than five times. This visualisation highlights species-level patterns and supports the research aim of identifying dominant and rare deer species across the region.
+
+### Spatial Distribution of Deer Species in NSW
+
+```{r spatial-distribution, fig.width=10, fig.height=7}
+# Using Australian government data  
+#install.packages("ozmaps")  
+library(ozmaps)  
+
+# Get the NSW border  
+nsw_border <- ozmaps::ozmap_states %>%  
+  filter(NAME == "New South Wales")  
+
+# Create your map with the NSW border  
+ggplot() +  
+  # First add the NSW border  
+  geom_sf(data = nsw_border, fill = NA, color = "black", size = 1) +  
+  # Then add your points  
+  geom_point(data = nsw_deer_clean,   
+             aes(x = decimalLongitude, y = decimalLatitude, color = scientificName),  
+             alpha = 0.7) +  
+  # Set the coordinate system  
+  coord_sf() +  
+  # Rest of your styling  
+  theme_minimal() +  
+  labs(  
+    title = "Distribution of Deer Species in NSW",  
+    subtitle = "Data from Atlas of Living Australia",  
+    x = "Longitude", y = "Latitude",  
+    color = "Species"  
+  ) +  
+  theme(  
+    legend.position = "right",  
+    plot.title = element_text(size = 16, face = "bold"),  
+    plot.subtitle = element_text(size = 12, face = "italic"),  
+    axis.title = element_text(size = 12, face = "bold"),  
+    legend.title = element_text(size = 12, face = "bold")  
+  ) +  
+  guides(color = guide_legend(override.aes = list(size = 4))) 
+
+```
+
+The map shows the geographic distribution of deer species sightings across New South Wales. Most records cluster along the eastern and southeastern regions, particularly in the Great Dividing Range and coastal areas. Broad species labels like "Cervus" or "CERVIDAE" may indicate uncertain identifications, but *Dama dama* (fallow deer) and *Cervus* species dominate overall. The sparse records in western NSW likely reflect both lower deer populations and reduced sampling effort in these less accessible regions.
+
+
+### Deer Observations Over Time
+
+```{r temporal-trends, fig.width=10, fig.height=7}
+yearly_counts <- nsw_deer_clean %>%
+  group_by(year) %>%
+  summarise(count = n()) %>%
+  filter(!is.na(year))
+
+ggplot(yearly_counts, aes(x = year, y = count)) +
+  geom_line() +
+  geom_point() +
+  theme_minimal() +
+  labs(
+    title = "Deer Observations in NSW Over Time",
+    x = "Year",
+    y = "Number of Observations"
+  ) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.title = element_text(size = 12, face = "bold")
+  )
+```
+
+Figure 3 displays yearly deer observation counts in NSW, showing a sharp increase after 2000, with a peak in 2011 (~6,000 observations). This spike may reflect increased deer sightings or improved reporting via platforms like the Atlas of Living Australia. While counts fluctuate in later years, the trend highlights changes in deer activity over time and supports the project's aim of identifying temporal distribution patterns.
+
+
+### Seasonal Patterns in Deer Observations
+
+```{r seasonal-patterns, fig.width=10, fig.height=6}
+# Extract month and create seasonal analysis
+nsw_deer_clean <- nsw_deer_clean %>%
+  mutate(month = month(observation_date))
+
+monthly_counts <- nsw_deer_clean %>%
+  group_by(month) %>%
+  summarise(count = n()) %>%
+  filter(!is.na(month))
+
+month_names <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+ggplot(monthly_counts, aes(x = factor(month, labels = month_names), y = count)) +
+  geom_col(fill = "steelblue") +
+  theme_minimal() +
+  labs(
+    title = "Seasonal Patterns in NSW Deer Observations",
+    x = "Month",
+    y = "Number of Observations"
+  ) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.title = element_text(size = 12, face = "bold")
+  )
+```
+
+Figure 4 shows monthly deer observation patterns in NSW, with a clear peak in May (~7,000 observations) and smaller peaks in April and July. These seasonal trends may reflect deer behaviour and observer activity. Understanding such fluctuations helps identify optimal periods for monitoring and ecological intervention.
+
+
+## Conclusion / Discussion
+
+This report explored the spatiotemporal distribution of feral deer species in New South Wales using observational data from the Atlas of Living Australia. The exploratory data analysis revealed that *Dama dama* (fallow deer) is the most frequently observed species, aligning with its widespread presence across the state. Spatial analysis identified that sightings are concentrated along the eastern and southeastern regions, particularly near the Great Dividing Range, highlighting potential geographic hotspots for management focus.
+
+Temporal analysis showed a dramatic spike in observations around 2011, which may reflect either population growth or increased public reporting through platforms like ALA. Seasonal trends indicated that deer observations peak in May and remain high through autumn and early winter. These findings suggest that deer activity, observer effort, or both are seasonally influenced.
+
+Overall, the results support the project’s aim of identifying patterns in species occurrence, regional clustering, and seasonal behaviour. These insights can inform targeted management strategies, such as prioritising control efforts in high-activity regions and timing interventions during peak observation periods.
+
+Future analysis could focus on more fine-grained spatial resolution (e.g., LGA-level patterns), incorporate habitat or climate variables, and investigate correlations between observation rates and control program implementation to further enhance ecological understanding and support evidence-based decision-making.
+
+## Bibliography
+
+Atlas of Living Australia (2025). Occurrence records of Cervidae. Retrieved from https://www.ala.org.au (Accessed: 11 April 2025).
+
+NSW Department of Primary Industries (2023). Feral deer. Retrieved from https://www.dpi.nsw.gov.au/biosecurity/vertebrate-pests/pest-animals-in-nsw (Accessed: 25 May 2025).
