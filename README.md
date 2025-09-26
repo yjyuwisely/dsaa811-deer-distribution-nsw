@@ -63,8 +63,12 @@ A map of NSW deer sightings shows that observations are concentrated in the **ea
 
 ## Files Included
 
-- `README.md`: This summary file  
-- `dsaa811_preliminary_report.Rmd`: Full R Markdown analysis (available in repo)  
+- `final_report.Rmd` – Full R Markdown analysis (source code for the final report)
+- `final_report.html` – Knitted HTML output of the final report
+- `nsw_deer_data.csv` – Cleaned dataset used for analysis
+- `data_dictionary.docx` – Description of dataset variables
+- `README.md` – This summary file
+- `.gitignore` – Git configuration file (optional)
 
 ---
 
